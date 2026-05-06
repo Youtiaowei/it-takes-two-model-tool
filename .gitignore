@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+dist/
+build/
+*.spec
+
+# Large binary files
+models/*.fbx
+models/*.blend
+models/*.glb
+models/*.zip
+models/azusa/
+models/nekoyama/
+models/output_cody/
+models/output_may/
+extracted/
+extracted_chars/
+mod_output/
+zip_output/
+Azusa_Mod_Package/
+
+# Archives
+*.zip
+*.pak
+
+# Temp
+auto_scripts/

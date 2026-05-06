@@ -1,0 +1,4 @@
+"C:/PakTemp_Cody/Nuts/Content/Characters/Cody/Cody.uasset" "../Nuts/Content/Characters/Cody/Cody.uasset"
+"C:/PakTemp_Cody/Nuts/Content/Characters/Cody/Cody_Skeleton.uasset" "../Nuts/Content/Characters/Cody/Cody_Skeleton.uasset"
+"C:/PakTemp_Cody/Nuts/Content/Characters/Cody/Cody.uexp" "../Nuts/Content/Characters/Cody/Cody.uexp"
+"C:/PakTemp_Cody/Nuts/Content/Characters/Cody/Cody_Skeleton.uexp" "../Nuts/Content/Characters/Cody/Cody_Skeleton.uexp"
