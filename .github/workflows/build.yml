@@ -10,74 +10,42 @@ on:
 
 jobs:
   build:
-    name: 交叉编译 .exe
-    runs-on: ubuntu-latest
+    name: 编译 .exe
+    runs-on: windows-latest  # 🪟 直接用 Windows runner，不用 Wine
 
     steps:
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      - name: ⏬ 下载 Python 3.11 安装包到仓库目录
+      - name: 🐍 安装 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安装 PyInstaller
         run: |
-          wget -q --show-progress \
-            https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
-            -O python-installer.exe
-          ls -lh python-installer.exe
+          python -m pip install --upgrade pip
+          pip install pyinstaller
 
-      - name: 🐳 构建 PyInstaller 镜像
+      - name: 🔨 打包 exe
         run: |
-          cat > Dockerfile.ci << 'DOCKERFILE'
-          FROM --platform=linux/amd64 ubuntu:22.04
-          ENV DEBIAN_FRONTEND=noninteractive
-          ENV WINEPREFIX=/wine
-          ENV WINEDLLOVERRIDES="winemenubuilder.exe=d"
-          RUN dpkg --add-architecture i386 && \
-              apt-get update && apt-get install -y --no-install-recommends \
-              xvfb xauth wine wine64 wine32:i386 \
-              && apt-get clean && rm -rf /var/lib/apt/lists/*
-          COPY python-installer.exe /tmp/python-installer.exe
-          RUN xvfb-run -a wine /tmp/python-installer.exe /quiet \
-              InstallAllUsers=1 PrependPath=1 Include_test=0 && \
-              rm /tmp/python-installer.exe
-          RUN xvfb-run -a wine python -m pip install --no-cache-dir pyinstaller
-          WORKDIR /src
-          DOCKERFILE
-
-          docker build -t pyinstaller-wine:latest -f Dockerfile.ci .
-
-      - name: 🔨 构建 Windows exe
-        run: |
-          mkdir -p dist
-          docker run --rm \
-            -v "${{ github.workspace }}:/src" \
-            -v "${{ github.workspace }}/dist:/output" \
-            pyinstaller-wine:latest \
-            bash -c "
-              set -e
-              echo '=== 🔨 正在打包 ==='
-              cd /src
-              pyinstaller \
-                --onefile \
-                --windowed \
-                --name 'ItTakesTwo_ModelSwapper' \
-                --noconsole \
-                --noconfirm \
-                --clean \
-                --icon 'assets/icon.ico' \
-                --add-data 'README.md;.' \
-                --add-data 'ui;ui' \
-                --add-data 'utils;utils' \
-                --add-data 'assets;assets' \
-                --hidden-import tkinter \
-                --hidden-import tkinter.ttk \
-                --hidden-import tkinter.filedialog \
-                --hidden-import tkinter.messagebox \
-                main.py
-
-              echo '=== 📋 复制输出 ==='
-              cp dist/ItTakesTwo_ModelSwapper.exe /output/
-              echo '=== ✅ 构建完成 ==='
-            "
+          pyinstaller `
+            --onefile `
+            --windowed `
+            --name "ItTakesTwo_ModelSwapper" `
+            --noconsole `
+            --noconfirm `
+            --clean `
+            --icon "assets/icon.ico" `
+            --add-data "README.md;." `
+            --add-data "ui;ui" `
+            --add-data "utils;utils" `
+            --add-data "assets;assets" `
+            --hidden-import tkinter `
+            --hidden-import tkinter.ttk `
+            --hidden-import tkinter.filedialog `
+            --hidden-import tkinter.messagebox `
+            main.py
 
       - name: 📎 上传构建产物
         uses: actions/upload-artifact@v4
@@ -92,7 +60,3 @@ jobs:
         with:
           files: dist/ItTakesTwo_ModelSwapper.exe
           generate_release_notes: true
-
-      - name: 🧹 清理临时文件
-        if: always()
-        run: rm -f python-installer.exe Dockerfile.ci
