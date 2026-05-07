@@ -6,7 +6,7 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main]
-  workflow_dispatch:    # 也可以在 GitHub 网页上手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,9 +17,26 @@ jobs:
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      - name: 🐳 拉取 Docker 镜像
+      - name: 🐳 构建 PyInstaller 镜像（Wine + Python 3.11）
         run: |
-          docker pull cdrx/pyinstaller-windows:python3.11
+          cat > Dockerfile.ci << 'DOCKERFILE'
+          FROM --platform=linux/amd64 ubuntu:22.04
+          ENV DEBIAN_FRONTEND=noninteractive
+          ENV WINEPREFIX=/wine
+          ENV WINEDLLOVERRIDES="winemenubuilder.exe=d"
+          RUN dpkg --add-architecture i386 && \
+              apt-get update && apt-get install -y --no-install-recommends \
+              wget xvfb xauth wine wine64 wine32:i386 \
+              && apt-get clean && rm -rf /var/lib/apt/lists/*
+          RUN wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
+              -O /tmp/python-installer.exe && \
+              xvfb-run -a wine /tmp/python-installer.exe /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 && \
+              rm /tmp/python-installer.exe
+          RUN xvfb-run -a wine python -m pip install --no-cache-dir pyinstaller
+          WORKDIR /src
+          DOCKERFILE
+
+          docker build -t pyinstaller-wine:latest -f Dockerfile.ci .
 
       - name: 🔨 构建 Windows exe
         run: |
@@ -27,12 +44,9 @@ jobs:
           docker run --rm \
             -v "${{ github.workspace }}:/src" \
             -v "${{ github.workspace }}/dist:/output" \
-            cdrx/pyinstaller-windows:python3.11 \
+            pyinstaller-wine:latest \
             bash -c "
               set -e
-              echo '=== 📦 安装 PyInstaller ==='
-              pip install pyinstaller --quiet
-
               echo '=== 🔨 正在打包 ==='
               cd /src
               pyinstaller \
