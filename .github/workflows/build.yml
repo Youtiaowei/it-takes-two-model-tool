@@ -17,12 +17,12 @@ jobs:
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      - name: ⏬ 下载 Python 3.11 安装包
+      - name: ⏬ 下载 Python 3.11 安装包到仓库目录
         run: |
           wget -q --show-progress \
             https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
-            -O /tmp/python-installer.exe
-          ls -lh /tmp/python-installer.exe
+            -O python-installer.exe
+          ls -lh python-installer.exe
 
       - name: 🐳 构建 PyInstaller 镜像
         run: |
@@ -43,9 +43,7 @@ jobs:
           WORKDIR /src
           DOCKERFILE
 
-          docker build -t pyinstaller-wine:latest -f Dockerfile.ci \
-            --build-arg BUILDKIT_INLINE_CACHE=1 \
-            .
+          docker build -t pyinstaller-wine:latest -f Dockerfile.ci .
 
       - name: 🔨 构建 Windows exe
         run: |
@@ -57,6 +55,7 @@ jobs:
             bash -c "
               set -e
               echo '=== 🔨 正在打包 ==='
+              cd /src
               pyinstaller \
                 --onefile \
                 --windowed \
@@ -76,7 +75,7 @@ jobs:
                 main.py
 
               echo '=== 📋 复制输出 ==='
-              cp /src/dist/ItTakesTwo_ModelSwapper.exe /output/
+              cp dist/ItTakesTwo_ModelSwapper.exe /output/
               echo '=== ✅ 构建完成 ==='
             "
 
@@ -93,3 +92,7 @@ jobs:
         with:
           files: dist/ItTakesTwo_ModelSwapper.exe
           generate_release_notes: true
+
+      - name: 🧹 清理临时文件
+        if: always()
+        run: rm -f python-installer.exe Dockerfile.ci
