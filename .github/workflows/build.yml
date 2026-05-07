@@ -17,7 +17,14 @@ jobs:
       - name: 📥 检出代码
         uses: actions/checkout@v4
 
-      - name: 🐳 构建 PyInstaller 镜像（Wine + Python 3.11）
+      - name: ⏬ 下载 Python 3.11 安装包
+        run: |
+          wget -q --show-progress \
+            https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
+            -O /tmp/python-installer.exe
+          ls -lh /tmp/python-installer.exe
+
+      - name: 🐳 构建 PyInstaller 镜像
         run: |
           cat > Dockerfile.ci << 'DOCKERFILE'
           FROM --platform=linux/amd64 ubuntu:22.04
@@ -26,17 +33,19 @@ jobs:
           ENV WINEDLLOVERRIDES="winemenubuilder.exe=d"
           RUN dpkg --add-architecture i386 && \
               apt-get update && apt-get install -y --no-install-recommends \
-              wget xvfb xauth wine wine64 wine32:i386 \
+              xvfb xauth wine wine64 wine32:i386 \
               && apt-get clean && rm -rf /var/lib/apt/lists/*
-          RUN wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
-              -O /tmp/python-installer.exe && \
-              xvfb-run -a wine /tmp/python-installer.exe /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 && \
+          COPY python-installer.exe /tmp/python-installer.exe
+          RUN xvfb-run -a wine /tmp/python-installer.exe /quiet \
+              InstallAllUsers=1 PrependPath=1 Include_test=0 && \
               rm /tmp/python-installer.exe
           RUN xvfb-run -a wine python -m pip install --no-cache-dir pyinstaller
           WORKDIR /src
           DOCKERFILE
 
-          docker build -t pyinstaller-wine:latest -f Dockerfile.ci .
+          docker build -t pyinstaller-wine:latest -f Dockerfile.ci \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            .
 
       - name: 🔨 构建 Windows exe
         run: |
@@ -48,7 +57,6 @@ jobs:
             bash -c "
               set -e
               echo '=== 🔨 正在打包 ==='
-              cd /src
               pyinstaller \
                 --onefile \
                 --windowed \
@@ -68,7 +76,7 @@ jobs:
                 main.py
 
               echo '=== 📋 复制输出 ==='
-              cp dist/ItTakesTwo_ModelSwapper.exe /output/
+              cp /src/dist/ItTakesTwo_ModelSwapper.exe /output/
               echo '=== ✅ 构建完成 ==='
             "
 
